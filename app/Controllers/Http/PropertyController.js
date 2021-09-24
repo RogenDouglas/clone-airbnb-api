@@ -15,8 +15,13 @@ class PropertyController {
    * GET properties
    *
    */
-  async index() {
-    const properties = Property.all();
+  async index({ request }) {
+    const { latitude, longitude } = request.all();
+
+    const properties = Property.query()
+      .with("images")
+      .nearBy(latitude, longitude, 10)
+      .fetch();
 
     return properties;
   }
@@ -29,7 +34,20 @@ class PropertyController {
    * @param {Request} ctx.request
    * @param {Response} ctx.response
    */
-  async store({ request, response }) {}
+  async store({ auth, request, response }) {
+    const { id } = auth.user;
+    const data = request.only([
+      "title",
+      "address",
+      "latitude",
+      "longitude",
+      "price",
+    ]);
+
+    const property = await Property.create({ ...data, user_id: id });
+
+    return property;
+  }
 
   /**
    * Display a single property.
@@ -53,7 +71,23 @@ class PropertyController {
    * @param {Request} ctx.request
    * @param {Response} ctx.response
    */
-  async update({ params, request, response }) {}
+  async update({ params, request, response }) {
+    const property = await Property.findOrFail(params.id);
+
+    const data = request.only([
+      "title",
+      "address",
+      "latitude",
+      "longitude",
+      "price",
+    ]);
+
+    property.merge(data);
+
+    await property.save();
+
+    return property;
+  }
 
   /**
    * Delete a property with id.
